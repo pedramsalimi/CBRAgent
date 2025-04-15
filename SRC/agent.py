@@ -17,19 +17,14 @@ from langgraph.graph.message import AnyMessage, add_messages
 from typing import Callable
 from counterfactual import generate_counterfactual, predict_loan_approval
 
-# ==================================
-# Create logs directory if it doesn't exist
-# ==================================
+
 if not os.path.exists("logs"):
     os.makedirs("logs")
 
-# Configure base logging (This will be overridden for participants)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ============================
-# Configuration and Constants
-# ============================
+
 instructions = """
 ### **Welcome to the Loan Application Assistant User Study**
 
@@ -52,11 +47,10 @@ You are **John Doe**, a **36-year-old** individual applying for a loan to purcha
 After your conversation with the assistant, you’ll be asked to complete a brief survey to share your feedback and experiences.
 """
 
-MAX_INTERACTIONS = 5  # Maximum number of user interactions
+MAX_INTERACTIONS = 5  
 
 os.environ["OPENAI_API_KEY"] = "APIKEY"
 
-# Initialize session state variables
 if "global_chat" not in st.session_state:
     st.session_state.global_chat = []
 if "user_data" not in st.session_state:
@@ -136,7 +130,6 @@ def save_final_conversation_and_survey():
     participant_id = st.session_state.participant_id
     conversation_log = st.session_state.global_chat
 
-    # Save entire conversation as JSON
     full_convo_filename = os.path.join("logs", f"full_conversation_{participant_id}.json")
     with open(full_convo_filename, "w", encoding="utf-8") as f:
         json.dump({
@@ -144,7 +137,6 @@ def save_final_conversation_and_survey():
             "conversation": conversation_log
         }, f, ensure_ascii=False, indent=2)
 
-    # Survey responses are saved when submitted (in the code below)
 
 def collect_user_data():
     st.markdown(instructions)
@@ -184,7 +176,6 @@ def collect_user_data():
 
         st.session_state.user_data = user_data
 
-        # Generate and assign a unique participant ID if not already assigned
         if not st.session_state.participant_id:
             st.session_state.participant_id = generate_participant_id()
             st.session_state.participant_logger = get_participant_logger(st.session_state.participant_id)
@@ -197,7 +188,6 @@ def collect_user_data():
         st.session_state.global_chat.append({"assistant": assistant_message})
         log_chat_message("assistant", assistant_message)
 
-        # Process the loan application
         loan_result = predict_loan_approval(user_data)
         st.session_state.loan_result = loan_result
         st.session_state.participant_logger.info(f"Loan Prediction Result: {loan_result}")
@@ -250,10 +240,7 @@ def generate_counterfactual_tool(input_str: str) -> str:
     user_data = data["user_data"]
     user_constraints = data["user_constraints"]
 
-    # (The rest of your original logic remains the same, except now you reference user_data and user_constraints 
-    # from above variables rather than function arguments directly.)
-    
-    # --- BEGIN ORIGINAL LOGIC ---
+
     features = [
         'loan_status',  
         'person_age',
@@ -333,7 +320,6 @@ def generate_counterfactual_tool(input_str: str) -> str:
             return "No changes needed based on the current constraints."
 
     return "No counterfactual solution found based on the provided data and constraints."
-    # --- END ORIGINAL LOGIC ---
 
 
 @tool
@@ -360,7 +346,6 @@ def update_constraints_tool(input_str: str) -> str:
         if feature not in st.session_state.user_constraints:
             st.session_state.user_constraints.append(feature)
 
-    # Now call generate_counterfactual_tool using a single string argument:
     cf_input_str = json.dumps({
         "user_data": user_data,
         "user_constraints": st.session_state.user_constraints
@@ -516,7 +501,6 @@ def display_chat():
 
             render_messages()
 
-    # If survey is completed, display the survey
     if st.session_state.survey_completed:
         st.subheader("Survey")
         with st.form("survey_form"):
@@ -567,13 +551,11 @@ def display_chat():
                     "suggestions": suggestions
                 }
 
-                # Save survey response
                 survey_filename = os.path.join("logs", f"survey_responses_{st.session_state.participant_id}.json")
                 with open(survey_filename, "a", encoding="utf-8") as f:
                     f.write(json.dumps(survey_response) + "\n")
                 st.session_state.participant_logger.info(f"Survey Response: {survey_response}")
 
-                # Save final conversation
                 save_final_conversation_and_survey()
 
                 st.success("Thank you for completing the survey!")
